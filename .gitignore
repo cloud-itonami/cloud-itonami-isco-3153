@@ -1,0 +1,24 @@
+# Clojure
+.cpcache/
+.classpath
+.project
+.clj-kondo/
+.lsp/
+*.class
+
+# Build outputs
+target/
+dist/
+out/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.vscode/
+
+# Testing
+.coverage/
+coverage/
