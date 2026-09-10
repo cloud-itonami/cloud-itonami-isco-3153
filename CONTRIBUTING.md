@@ -36,7 +36,7 @@ clojure -M:test
 Any proposal or change that touches flight control, go/no-go decisions, airworthiness,
 crew authority, or real-time in-flight operations is out of scope and will be rejected.
 
-All hard safety invariants and scope exclusions are defined in `src/flight_operations/governor.cljc`.
+All hard safety invariants and scope exclusions are defined in `src/flight_operations/governor.kotoba`.
 Do not modify these without explicit consensus from the cloud-itonami maintainers.
 
 ## Questions?

@@ -66,15 +66,15 @@ human-in-the-loop interrupt/resume via checkpointing.
                                            +-> :hold               (:hard? true)
 ```
 
-- `src/flight_operations/store.cljc` — `Store` protocol + `MemStore`:
+- `src/flight_operations/store.kotoba` — `Store` protocol + `MemStore`:
   registered aircraft and crew, committed operations, an append-only audit ledger.
-- `src/flight_operations/advisor.cljc` — `Advisor` protocol; `mock-advisor`
+- `src/flight_operations/advisor.kotoba` — `Advisor` protocol; `mock-advisor`
   (deterministic, default) proposes a flight operations support action from a
   request; `llm-advisor` wraps a `langchain.model/ChatModel` — either
   way the advisor only ever produces a `:propose`-effect proposal,
   never a committed record, and LLM parse failures always yield
   `confidence 0.0` (forces escalation, never fabricated confidence).
-- `src/flight_operations/governor.cljc` — `FlightOperationsGovernor/check`: a pure
+- `src/flight_operations/governor.kotoba` — `FlightOperationsGovernor/check`: a pure
   function, wired as its own `:govern` node. Hard invariants
   (unregistered aircraft/crew, a proposal whose `:effect` isn't `:propose`,
   any operation touching flight control / go/no-go / airworthiness / crew authority)
@@ -82,7 +82,7 @@ human-in-the-loop interrupt/resume via checkpointing.
   or low advisor confidence) always route to `:request-approval` — an
   `interrupt-before` node that the graph checkpoints and only resumes on
   explicit human approval (`actor/approve!`).
-- `src/flight_operations/actor.cljc` — `build-graph`, `run-request!`,
+- `src/flight_operations/actor.kotoba` — `build-graph`, `run-request!`,
   `approve!`: the `langgraph.graph/state-graph` wiring itself.
 
 ```bash

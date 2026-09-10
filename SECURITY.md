@@ -4,7 +4,7 @@
 
 This repository implements a flight operations **support & dispatch** actor for ground/pre-flight back-office workflow. **It does not control aircraft, make go/no-go decisions, or exercise pilot-in-command authority.**
 
-All safety invariants are enforced in `src/flight_operations/governor.cljc`:
+All safety invariants are enforced in `src/flight_operations/governor.kotoba`:
 - Hard blocks on any operation touching flight control, airworthiness, crew authority, or real-time in-flight operations.
 - Mechanical concerns always escalate to human review.
 - No proposal can bypass the Governor.
@@ -23,7 +23,7 @@ If you discover a security vulnerability, **please do not open a public issue**.
 ## Safety-Critical Constraints
 
 - **Scope Exclusion is Permanent**: Any proposal or code change that touches flight control, go/no-go decisions, airworthiness, crew duty regulation, or real-time in-flight operations is fundamentally out of scope and will be rejected, regardless of how it is framed.
-- **Governor is Unreducible**: The Governor (`src/flight_operations/governor.cljc`) gates every operation. Do not attempt to bypass or downgrade safety rules without explicit maintainer consensus.
+- **Governor is Unreducible**: The Governor (`src/flight_operations/governor.kotoba`) gates every operation. Do not attempt to bypass or downgrade safety rules without explicit maintainer consensus.
 - **Audit Ledger is Append-Only**: All operations are logged. No retroactive deletion or modification of audit records is permitted.
 
 ## Expectations
