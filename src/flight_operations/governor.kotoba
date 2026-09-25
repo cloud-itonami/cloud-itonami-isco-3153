@@ -35,30 +35,29 @@
     3. no-flight-control — any proposal op touching flight control, go/no-go,
        airworthiness, real-time in-flight, maintenance release, crew rest,
        or regulatory authority is permanently blocked (even :propose effect).
-       HARD block, not escalation. Complete exclusion list in :disallowed-ops.
+       HARD block, not escalation. The list is the keys of
+       `facts/reserved-authorities`; each violation carries the holder
+       and the 14 CFR section that reserves the authority.
+    4. closed vocabulary — an op in neither `facts/permitted-ops` nor the
+       exclusion list (an LLM can return any keyword, including the
+       advisor's own `:unknown` parse-failure op) is held as
+       `:unknown-op`, never committed on confidence alone.
 
   ESCALATION invariants (:escalate? true, ALWAYS human sign-off):
-    4. :op :flag-mechanical-concern (always escalates — mechanical concerns
+    5. :op :flag-mechanical-concern (always escalates — mechanical concerns
        always surface to human review; never auto-proceed)
-    5. low confidence (< `confidence-floor`)"
-  (:require [flight-operations.store :as store]))
+    6. low confidence (< `confidence-floor`)"
+  (:require [flight-operations.facts :as facts]
+            [flight-operations.store :as store]))
 
 (def confidence-floor 0.6)
 
 (def ^:private disallowed-ops
   "Operations permanently blocked (no proposal effect will permit these).
-  Any proposal with these ops is a :hard? violation."
-  #{:flight-control
-    :go-no-go-decision
-    :airworthiness-determination
-    :maintenance-release
-    :real-time-dispatch
-    :pilot-in-command-authority
-    :aircraft-system-control
-    :crew-duty-regulation
-    :takeoff-authorization
-    :landing-authorization
-    :in-flight-coordination})
+  Any proposal with these ops is a :hard? violation. Derived from
+  `facts/reserved-authorities`, so an op is forbidden only together with
+  the regulation that says whose authority it is."
+  (set (keys facts/reserved-authorities)))
 
 (def ^:private escalating-ops
   "Operations that always require human sign-off (escalate via :request-approval)."
@@ -77,7 +76,13 @@
 
     (contains? disallowed-ops (:op proposal))
     (conj {:rule :forbidden-scope
-           :detail "This operation touches flight control, go/no-go, airworthiness, real-time in-flight operations, or crew authority. Permanently excluded from this actor's scope."})))
+           :detail "This operation touches flight control, go/no-go, airworthiness, real-time in-flight operations, or crew authority. Permanently excluded from this actor's scope."
+           :authority (facts/authority-of (:op proposal))})
+
+    (not (or (contains? facts/permitted-ops (:op proposal))
+             (contains? disallowed-ops (:op proposal))))
+    (conj {:rule :unknown-op
+           :detail "op is outside this actor's vocabulary (facts/permitted-ops); held rather than judged on confidence"})))
 
 (defn check
   "Assess a proposal against `request`/`context`/`proposal` and a `store`
