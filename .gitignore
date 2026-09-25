@@ -22,3 +22,6 @@ out/
 # Testing
 .coverage/
 coverage/
+
+# kbb/nbb dependency cache
+.nbb/

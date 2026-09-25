@@ -73,21 +73,35 @@ human-in-the-loop interrupt/resume via checkpointing.
   request; `llm-advisor` wraps a `langchain.model/ChatModel` — either
   way the advisor only ever produces a `:propose`-effect proposal,
   never a committed record, and LLM parse failures always yield
-  `confidence 0.0` (forces escalation, never fabricated confidence).
+  `:op :unknown` with `confidence 0.0` (held by the governor as an
+  unknown op, never fabricated confidence).
 - `src/flight_operations/governor.kotoba` — `FlightOperationsGovernor/check`: a pure
   function, wired as its own `:govern` node. Hard invariants
   (unregistered aircraft/crew, a proposal whose `:effect` isn't `:propose`,
-  any operation touching flight control / go/no-go / airworthiness / crew authority)
-  always route to `:hold`. Escalation invariants (`:flag-mechanical-concern`,
+  any operation touching flight control / go/no-go / airworthiness / crew authority,
+  and any op outside the actor's four-op vocabulary)
+  always route to `:hold`. A forbidden-scope violation names whose authority
+  the op is and the 14 CFR section that assigns it. Escalation invariants (`:flag-mechanical-concern`,
   or low advisor confidence) always route to `:request-approval` — an
   `interrupt-before` node that the graph checkpoints and only resumes on
   explicit human approval (`actor/approve!`).
+- `src/flight_operations/facts.kotoba` — `permitted-ops` (the four ops the
+  advisor may propose) and `reserved-authorities`: each forbidden op mapped
+  to its holder (pilot in command, ATC, certificated mechanic, dispatcher)
+  and a 14 CFR section (91.3, 91.7, 91.123, 43.7, 117.5, 121.533, 121.663)
+  on govinfo.gov. The governor's exclusion list is the keys of this map.
 - `src/flight_operations/actor.kotoba` — `build-graph`, `run-request!`,
   `approve!`: the `langgraph.graph/state-graph` wiring itself.
 
 ```bash
 kbb -M:test
 ```
+
+21 tests / 85 assertions green. `run_tests.kotoba` refuses (exit 2) to
+report a pass below that published count, on 0 sources, or on 0 test
+namespaces; failures exit 1. (`cognitect.test-runner`, which `:test` named
+until 2026-09-25, resolves only `.clj`/`.cljc` and ran 0 tests after the
+`.kotoba` rename.)
 
 This is what backs this repo's `:maturity :implemented` entry in
 [`kotoba-lang/occupation`](https://github.com/kotoba-lang/occupation).

@@ -1,0 +1,67 @@
+(ns flight-operations.facts
+  "Who holds each authority this actor must never exercise, cited to the
+  regulation that assigns it. Read by `flight-operations.governor`: the
+  keys of `reserved-authorities` ARE its forbidden-scope list, so an op
+  cannot be forbidden without naming whose authority it is, and a
+  `:forbidden-scope` violation carries that citation into the ledger.
+
+  Sources are the 2024 annual edition of 14 CFR on govinfo.gov (one PDF
+  per section). Each URL below was fetched (HTTP 200, application/pdf)
+  and the section heading read from the document on 2026-09-25; the
+  `:title` is that heading verbatim. ecfr.gov is not cited: it serves an
+  interstitial to non-browser clients, so its URLs could not be checked.
+
+  `permitted-ops` is the actor's whole vocabulary -- the four ops the
+  advisor may propose. Anything in neither set is not ours to judge and
+  is held, not guessed at.")
+
+(def permitted-ops
+  #{:draft-flight-plan
+    :log-preflight-checklist
+    :flag-mechanical-concern
+    :coordinate-ground-support})
+
+(def ^:private cfr "https://www.govinfo.gov/content/pkg/CFR-2024-title14-")
+
+(def regulations
+  {:cfr-14-91-3   {:cite "14 CFR 91.3"
+                   :title "Responsibility and authority of the pilot in command."
+                   :url (str cfr "vol2/pdf/CFR-2024-title14-vol2-sec91-3.pdf")}
+   :cfr-14-91-7   {:cite "14 CFR 91.7"
+                   :title "Civil aircraft airworthiness."
+                   :url (str cfr "vol2/pdf/CFR-2024-title14-vol2-sec91-7.pdf")}
+   :cfr-14-91-123 {:cite "14 CFR 91.123"
+                   :title "Compliance with ATC clearances and instructions."
+                   :url (str cfr "vol2/pdf/CFR-2024-title14-vol2-sec91-123.pdf")}
+   :cfr-14-43-7   {:cite "14 CFR 43.7"
+                   :title "Persons authorized to approve aircraft, airframes, aircraft engines, propellers, appliances, or component parts for return to service after maintenance, preventive maintenance, rebuilding, or alteration."
+                   :url (str cfr "vol1/pdf/CFR-2024-title14-vol1-sec43-7.pdf")}
+   :cfr-14-117-5  {:cite "14 CFR 117.5"
+                   :title "Fitness for duty."
+                   :url (str cfr "vol3/pdf/CFR-2024-title14-vol3-sec117-5.pdf")}
+   :cfr-14-121-533 {:cite "14 CFR 121.533"
+                    :title "Responsibility for operational control: Domestic operations."
+                    :url (str cfr "vol3/pdf/CFR-2024-title14-vol3-sec121-533.pdf")}
+   :cfr-14-121-663 {:cite "14 CFR 121.663"
+                    :title "Responsibility for dispatch release: Domestic and flag operations."
+                    :url (str cfr "vol3/pdf/CFR-2024-title14-vol3-sec121-663.pdf")}})
+
+(def reserved-authorities
+  "op -> {:holder who the regulation gives it to, :regulation key}."
+  {:flight-control              {:holder "pilot in command" :regulation :cfr-14-91-3}
+   :aircraft-system-control     {:holder "pilot in command" :regulation :cfr-14-91-3}
+   :pilot-in-command-authority  {:holder "pilot in command" :regulation :cfr-14-91-3}
+   :go-no-go-decision           {:holder "pilot in command" :regulation :cfr-14-91-3}
+   :airworthiness-determination {:holder "pilot in command" :regulation :cfr-14-91-7}
+   :takeoff-authorization       {:holder "air traffic control" :regulation :cfr-14-91-123}
+   :landing-authorization       {:holder "air traffic control" :regulation :cfr-14-91-123}
+   :maintenance-release         {:holder "certificated mechanic / repair station" :regulation :cfr-14-43-7}
+   :crew-duty-regulation        {:holder "flightcrew member and certificate holder" :regulation :cfr-14-117-5}
+   :in-flight-coordination      {:holder "pilot in command and aircraft dispatcher" :regulation :cfr-14-121-533}
+   :real-time-dispatch          {:holder "pilot in command and aircraft dispatcher" :regulation :cfr-14-121-663}})
+
+(defn authority-of
+  "The reserved authority for `op` with its regulation inlined, or nil."
+  [op]
+  (when-let [{:keys [regulation] :as a} (get reserved-authorities op)]
+    (merge a (get regulations regulation))))

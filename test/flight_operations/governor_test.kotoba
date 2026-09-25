@@ -1,7 +1,9 @@
 (ns flight-operations.governor-test
   (:require [clojure.test :refer [deftest is testing]]
             [flight-operations.store :as store]
-            [flight-operations.governor :as governor]))
+            [flight-operations.governor :as governor]
+            [flight-operations.facts :as facts]
+            [kotoba.lang.text :as str]))
 
 (defn- fresh-store []
   (let [st (store/mem-store)]
@@ -87,3 +89,53 @@
     (store/append-ledger! st {:disposition :commit})
     (is (= 1 (count (store/operations-of st "N1234"))))
     (is (= 1 (count (store/ledger st))))))
+
+(deftest ok-on-coordinate-ground-support
+  ;; Boundary for hard-on-op-outside-vocabulary: the last of the four
+  ;; permitted ops, never exercised before, must still pass.
+  (let [st (fresh-store)
+        proposal {:op :coordinate-ground-support :effect :propose :confidence 0.9 :stake :low}
+        v (governor/check {:aircraft-id "N1234" :crew-id "crew-1"} {} proposal st)]
+    (is (:ok? v))
+    (is (empty? (:violations v)))))
+
+(deftest hard-on-op-outside-vocabulary
+  ;; An LLM advisor can return any keyword. Before this rule an op in
+  ;; neither list -- here one that sounds routine -- committed on
+  ;; confidence alone.
+  (let [st (fresh-store)
+        proposal {:op :cancel-flight :effect :propose :confidence 0.95 :stake :low}
+        v (governor/check {:aircraft-id "N1234" :crew-id "crew-1"} {} proposal st)]
+    (is (not (:ok? v)))
+    (is (:hard? v))
+    (is (= [:unknown-op] (mapv :rule (:violations v))))))
+
+(deftest hard-on-unparseable-llm-proposal
+  ;; advisor/parse-proposal yields :op :unknown; it is held, not escalated.
+  (let [st (fresh-store)
+        proposal {:op :unknown :effect :propose :confidence 0.0 :stake :high}
+        v (governor/check {:aircraft-id "N1234" :crew-id "crew-1"} {} proposal st)]
+    (is (:hard? v))
+    (is (not (:escalate? v)))
+    (is (some #(= :unknown-op (:rule %)) (:violations v)))))
+
+(deftest forbidden-scope-names-whose-authority-it-is
+  (let [st (fresh-store)
+        proposal {:op :maintenance-release :effect :propose :confidence 0.9 :stake :high}
+        v (governor/check {:aircraft-id "N1234" :crew-id "crew-1"} {} proposal st)
+        viol (first (filter #(= :forbidden-scope (:rule %)) (:violations v)))]
+    (is (:hard? v))
+    (is (= "14 CFR 43.7" (get-in viol [:authority :cite])))
+    (is (= "certificated mechanic / repair station" (get-in viol [:authority :holder])))))
+
+(deftest every-reserved-authority-is-cited-and-held
+  (is (= 11 (count facts/reserved-authorities)))
+  (is (empty? (filter (set (keys facts/reserved-authorities)) facts/permitted-ops)))
+  (let [st (fresh-store)]
+    (doseq [op (keys facts/reserved-authorities)]
+      (let [a (facts/authority-of op)
+            v (governor/check {:aircraft-id "N1234" :crew-id "crew-1"} {}
+                              {:op op :effect :propose :confidence 0.99 :stake :low} st)]
+        (is (str/starts-with? (str (:url a)) "https://www.govinfo.gov/content/pkg/CFR-2024-title14-") (str op))
+        (is (str/starts-with? (str (:cite a)) "14 CFR ") (str op))
+        (is (= [:forbidden-scope] (mapv :rule (:violations v))) (str op))))))
